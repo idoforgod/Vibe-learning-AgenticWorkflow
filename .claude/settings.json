@@ -9,6 +9,15 @@
             "timeout": 30
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if test -f \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/save_session_snapshot.py; then python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/save_session_snapshot.py; fi",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -19,6 +28,16 @@
             "type": "command",
             "command": "if test -f \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/context_guard.py; then python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/context_guard.py --mode=post-tool; fi",
             "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if test -f \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/track_session_activity.py; then python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/track_session_activity.py; fi",
+            "timeout": 10
           }
         ]
       }
@@ -73,6 +92,16 @@
           {
             "type": "command",
             "command": "if test -f \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/predictive_debug_guard.py; then python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/predictive_debug_guard.py; fi",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if test -f \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/guard_learner_state.py; then python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/scripts/guard_learner_state.py; fi",
             "timeout": 10
           }
         ]

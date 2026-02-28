@@ -1,0 +1,79 @@
+workflow:
+  name: "Socratic AI Tutor Builder"
+  current_step: 16
+  workflow_status: "in_progress"
+  outputs:
+    step-1: "research/requirements-manifest.md"
+    step-2: "research/tech-feasibility-report.md"
+    step-3: "research/pedagogy-verification-report.md"
+    step-4: "autopilot-logs/step-4-decision.md"
+    step-5: "planning/architecture-blueprint.md"
+    step-5-ko: "planning/architecture-blueprint.ko.md"
+    step-6: "planning/agent-personas.md"
+    step-6-ko: "planning/agent-personas.ko.md"
+    step-7: "planning/json-schemas.md"
+    step-8: "planning/command-interfaces.md"
+    step-8-ko: "planning/command-interfaces.ko.md"
+    step-9: "planning/quality-framework.md"
+    step-10: "planning/design-review-report.md"
+    step-11: "autopilot-logs/step-11-decision.md"
+    step-12: "scaffolding-report.md"
+    step-13: ".claude/agents/"
+    step-14: ".claude/skills/socratic-tutor/phase0-pipeline.md"
+    step-15: ".claude/skills/socratic-tutor/"
+  autopilot:
+    enabled: true
+    decision_log_dir: "autopilot-logs/"
+    auto_approved_steps: [4, 11]
+  pacs:
+    current_step_score: 86
+    dimensions:
+      F: 87
+      C: 86
+      L: 88
+    weak_dimension: "C"
+    pre_mortem_flag: "interactive-relay-protocol-implicit, session-logger-background-mechanism-untested, no-reference-materials-session-templates"
+    history:
+      step-1: {score: 78, weak: "L"}
+      step-2: {score: 82, weak: "L"}
+      step-3: {score: 84, weak: "L"}
+      step-5: {score: 83, weak: "L"}
+      step-6: {score: 82, weak: "L"}
+      step-7: {score: 85, weak: "C"}
+      step-8: {score: 86, weak: "C"}
+      step-9: {score: 86, weak: "L"}
+      step-10: {score: 83, weak: "C"}
+      step-12: {score: 89, weak: "C"}
+      step-13: {score: 86, weak: "C"}
+      step-14: {score: 85, weak: "C"}
+      step-15: {score: 86, weak: "C"}
+  active_team: null
+  completed_teams:
+    - name: "step-6-agent-design"
+      status: "all_completed"
+      tasks_completed: ["task-alpha", "task-beta", "task-gamma"]
+      tasks_pending: []
+      completed_summaries:
+        task-alpha: {agents: 6, phase: "Phase 0", output: "planning/agent-personas/phase0-*.md"}
+        task-beta: {agents: 6, phase: "Phase 1-2 + orchestrator", output: "planning/agent-personas/phase1-*.md + phase2-*.md + orchestrator.md"}
+        task-gamma: {agents: 5, phase: "Phase 3", output: "planning/agent-personas/phase3-*.md"}
+    - name: "step-13-agent-impl"
+      status: "all_completed"
+      tasks_completed: ["task-alpha", "task-beta", "task-gamma"]
+      tasks_pending: []
+      completed_summaries:
+        task-alpha: {agents: 6, phase: "Phase 0", output: ".claude/agents/{content-analyzer,topic-scout,web-searcher,deep-researcher,content-curator,curriculum-architect}.md"}
+        task-beta: {agents: 6, phase: "Phase 1-2", output: ".claude/agents/{orchestrator,learner-profiler,knowledge-researcher,path-optimizer,session-planner,session-logger}.md"}
+        task-gamma: {agents: 5, phase: "Phase 3", output: ".claude/agents/{socratic-tutor,misconception-detector,metacog-coach,concept-mapper,progress-tracker}.md"}
+  parent_genome:
+    source: "AgenticWorkflow"
+    version: "2026-02-27"
+    inherited_dna:
+      - "absolute-criteria"
+      - "sot-pattern"
+      - "3-phase-structure"
+      - "4-layer-qa"
+      - "safety-hooks"
+      - "adversarial-review"
+      - "decision-log"
+      - "context-preservation"

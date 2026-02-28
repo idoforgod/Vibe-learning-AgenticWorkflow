@@ -1,0 +1,646 @@
+# Agent Specifications — Socratic AI Tutor Builder
+#
+# Maps all builder agents, target agents, slash commands,
+# preprocessing/postprocessing scripts, and MCP servers.
+
+# ═══════════════════════════════════════════════════════════
+# Builder Agents — Used during the 21-step build process
+# ═══════════════════════════════════════════════════════════
+
+builder_agents:
+  research:
+    - name: prd-analyst
+      model: opus
+      step: 1
+      type: sub-agent
+      description: "PRD & design document deep analysis — extracts complete requirements manifest"
+      input: "coding-resource/PRD.md, coding-resource/socratic-ai-tutor-workflow.md"
+      output: "research/requirements-manifest.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: tech-scout
+      model: sonnet
+      step: 2
+      type: sub-agent
+      description: "Technology feasibility assessment — MCP availability, model selection, constraints"
+      input: "research/requirements-manifest.md"
+      output: "research/tech-feasibility-report.md"
+      tools: [Read, Glob, Grep, WebSearch, WebFetch, Write]
+
+    - name: edu-analyst
+      model: opus
+      step: 3
+      type: sub-agent
+      description: "Educational pedagogy verification — academic validation of pedagogical claims"
+      input: "coding-resource/PRD.md, temp/edu-theories.json"
+      output: "research/pedagogy-verification-report.md"
+      tools: [Read, Glob, Grep, WebSearch, WebFetch, Write]
+
+  planning:
+    - name: architect
+      model: opus
+      step: 5
+      type: sub-agent
+      description: "System architecture blueprint — agent call graph, dual SOT, file layout"
+      input: "research/requirements-manifest.md, research/tech-feasibility-report.md, research/pedagogy-verification-report.md"
+      output: "planning/architecture-blueprint.md"
+      tools: [Read, Glob, Grep, Write, Edit]
+
+    - name: agent-designer-alpha
+      model: opus
+      step: 6
+      type: teammate
+      team: "step-6-agent-design"
+      description: "Phase 0 agent persona design (6 agents)"
+      assignment:
+        - content-analyzer
+        - topic-scout
+        - web-searcher
+        - deep-researcher
+        - content-curator
+        - curriculum-architect
+      output: "planning/agent-personas-phase0.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: agent-designer-beta
+      model: opus
+      step: 6
+      type: teammate
+      team: "step-6-agent-design"
+      description: "Phase 1-2 agent persona design (6 agents)"
+      assignment:
+        - orchestrator
+        - learner-profiler
+        - knowledge-researcher
+        - path-optimizer
+        - session-planner
+        - session-logger
+      output: "planning/agent-personas-phase12.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: agent-designer-gamma
+      model: opus
+      step: 6
+      type: teammate
+      team: "step-6-agent-design"
+      description: "Phase 3 agent persona design (5 agents)"
+      assignment:
+        - socratic-tutor
+        - misconception-detector
+        - metacog-coach
+        - concept-mapper
+        - progress-tracker
+      output: "planning/agent-personas-phase3.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: schema-designer
+      model: sonnet
+      step: 7
+      type: sub-agent
+      description: "JSON schema design — all data contracts between agents"
+      input: "research/requirements-manifest.md, planning/architecture-blueprint.md"
+      output: "planning/json-schemas.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: interface-designer
+      model: sonnet
+      step: 8
+      type: sub-agent
+      description: "Slash command interface design — 9 commands with UX consistency"
+      input: "research/requirements-manifest.md, planning/architecture-blueprint.md"
+      output: "planning/command-interfaces.md"
+      tools: [Read, Glob, Grep, Write]
+
+    - name: qa-designer
+      model: sonnet
+      step: 9
+      type: sub-agent
+      description: "Quality framework design — curriculum + educational metrics"
+      input: "research/requirements-manifest.md, research/pedagogy-verification-report.md"
+      output: "planning/quality-framework.md"
+      tools: [Read, Glob, Grep, Write]
+
+  implementation:
+    - name: builder
+      model: sonnet
+      step: 12
+      type: sub-agent
+      description: "Project scaffolding & SOT initialization"
+      input: "planning/architecture-blueprint.md, planning/json-schemas.md"
+      output: "Project scaffolding (multi-file)"
+      tools: [Read, Glob, Grep, Write, Edit, Bash]
+
+    - name: implementer-alpha
+      model: opus
+      step: 13
+      type: teammate
+      team: "step-13-agent-impl"
+      description: "Phase 0 agent implementation (6 agents)"
+      assignment:
+        - content-analyzer
+        - topic-scout
+        - web-searcher
+        - deep-researcher
+        - content-curator
+        - curriculum-architect
+      output: "6 agent .md files under .claude/agents/"
+      tools: [Read, Write, Edit, Glob, Grep]
+
+    - name: implementer-beta
+      model: opus
+      step: 13
+      type: teammate
+      team: "step-13-agent-impl"
+      description: "Phase 1-2 agent implementation (6 agents)"
+      assignment:
+        - orchestrator
+        - learner-profiler
+        - knowledge-researcher
+        - path-optimizer
+        - session-planner
+        - session-logger
+      output: "6 agent .md files under .claude/agents/"
+      tools: [Read, Write, Edit, Glob, Grep]
+
+    - name: implementer-gamma
+      model: opus
+      step: 13
+      type: teammate
+      team: "step-13-agent-impl"
+      description: "Phase 3 agent implementation (5 agents)"
+      assignment:
+        - socratic-tutor
+        - misconception-detector
+        - metacog-coach
+        - concept-mapper
+        - progress-tracker
+      output: "5 agent .md files under .claude/agents/"
+      tools: [Read, Write, Edit, Glob, Grep]
+
+    - name: pipeline-builder
+      model: opus
+      step: 14
+      type: sub-agent
+      description: "Phase 0 pipeline implementation — /teach command backend"
+      input: "planning/architecture-blueprint.md, planning/json-schemas.md, planning/agent-personas.md"
+      output: "Phase 0 pipeline code under .claude/skills/socratic-tutor/"
+      tools: [Read, Glob, Grep, Write, Edit, Bash]
+
+    - name: skill-builder
+      model: opus
+      step: 15
+      type: sub-agent
+      description: "Phase 1-3 Skill implementation — interactive tutoring"
+      input: "planning/architecture-blueprint.md, planning/agent-personas.md, planning/json-schemas.md"
+      output: "Socratic Tutor Skill under .claude/skills/socratic-tutor/"
+      tools: [Read, Glob, Grep, Write, Edit, Bash]
+
+    - name: command-builder
+      model: sonnet
+      step: 16
+      type: sub-agent
+      description: "Slash command implementation — 9 user-facing commands"
+      input: "planning/command-interfaces.md"
+      output: "9 command .md files under .claude/commands/"
+      tools: [Read, Write, Edit, Glob, Grep]
+
+    - name: infra-builder
+      model: sonnet
+      step: 17
+      type: sub-agent
+      description: "Hook & state management — session logging, recovery, metrics"
+      input: "planning/architecture-blueprint.md, planning/json-schemas.md"
+      output: "State management infrastructure code"
+      tools: [Read, Glob, Grep, Write, Edit, Bash]
+
+    - name: tester
+      model: opus
+      step: 18
+      type: sub-agent
+      description: "Integration testing — end-to-end system validation"
+      input: "All implementation outputs (Steps 12-17)"
+      output: "testing/integration-test-report.md"
+      tools: [Read, Glob, Grep, Write, Edit, Bash]
+
+    - name: documenter
+      model: sonnet
+      step: 21
+      type: sub-agent
+      description: "User documentation — manual, FAQ, troubleshooting"
+      input: "All prior outputs"
+      output: "SOCRATIC-TUTOR-USER-MANUAL.md"
+      tools: [Read, Glob, Grep, Write, Edit]
+
+  # Shared builder agents (used across multiple steps)
+  shared:
+    - name: reviewer
+      model: opus
+      steps: [3, 5, 6, 7, 10, 13, 14, 15, 19, 21]
+      type: sub-agent
+      description: "Adversarial reviewer — code/output quality, architecture consistency"
+      agent_definition: ".claude/agents/reviewer.md"
+      output: "review-logs/step-N-review.md"
+      tools: [Read, Glob, Grep]
+
+    - name: fact-checker
+      model: opus
+      steps: [3]
+      type: sub-agent
+      description: "Adversarial fact verification — academic source validation"
+      agent_definition: ".claude/agents/fact-checker.md"
+      output: "review-logs/step-N-review.md"
+      tools: [Read, Glob, Grep, WebSearch, WebFetch]
+
+    - name: translator
+      model: opus
+      steps: [5, 6, 8, 21]
+      type: sub-agent
+      description: "English→Korean translation with glossary consistency. Invoked AFTER Review PASS (Orchestrator-enforced sequencing)."
+      agent_definition: ".claude/agents/translator.md"
+      output_pattern: "Insert .ko before final extension (e.g., report.md → report.ko.md)"
+      output_examples:
+        step-5: "planning/architecture-blueprint.ko.md"
+        step-6: "planning/agent-personas.ko.md"
+        step-8: "planning/command-interfaces.ko.md"
+        step-21: "SOCRATIC-TUTOR-USER-MANUAL.ko.md"
+      glossary: "translations/glossary.yaml"
+      pacs_log: "pacs-logs/step-N-translation-pacs.md"
+      sot_key_pattern: "outputs.step-N-ko"
+      validation: "python3 .claude/hooks/scripts/validate_translation.py --step N --project-dir . --check-pacs [--check-sequence if Review step]"
+      trace_rule: "Preserve [trace:step-N] markers verbatim — never translate"
+      tools: [Read, Write, Glob, Grep]
+
+
+# ═══════════════════════════════════════════════════════════
+# Target Agents — The 17 agents being BUILT by this workflow
+# ═══════════════════════════════════════════════════════════
+
+target_agents:
+  phase0:
+    - name: content-analyzer
+      model: opus
+      description: "User-resource scanner + content deep analyzer"
+      tools: [Read, Glob, Grep]
+      trigger: "/teach command — first in pipeline"
+      input: "user-resource/ folder contents"
+      output: "data/socratic/user-resource-scan.json, data/socratic/content-analysis.json"
+
+    - name: topic-scout
+      model: sonnet
+      description: "Keyword → learning scope, sub-topics, prerequisites"
+      tools: [Read]
+      trigger: "After @content-analyzer (or directly if no user-resource)"
+      input: "Keyword + user-resource-scan.json (if exists)"
+      output: "data/socratic/topic-scope.json"
+
+    - name: web-searcher
+      model: sonnet
+      description: "Real-time web search for latest learning materials"
+      tools: [Read, WebSearch, WebFetch]
+      trigger: "After @topic-scout (parallel with @deep-researcher)"
+      input: "data/socratic/topic-scope.json"
+      output: "data/socratic/web-search-results.json"
+
+    - name: deep-researcher
+      model: opus
+      description: "Academic papers, textbooks, MOOC content deep research"
+      tools: [Read, WebSearch, WebFetch]
+      trigger: "After @topic-scout (parallel with @web-searcher)"
+      input: "data/socratic/topic-scope.json"
+      output: "data/socratic/deep-research-results.json"
+
+    - name: content-curator
+      model: sonnet
+      description: "Quality evaluation, deduplication, material selection"
+      tools: [Read, Glob]
+      trigger: "After @web-searcher + @deep-researcher complete"
+      input: "web-search-results.json, deep-research-results.json, user-resource-scan.json"
+      output: "data/socratic/curated-content.json"
+
+    - name: curriculum-architect
+      model: opus
+      description: "Automated curriculum design — modules, lessons, Socratic questions"
+      tools: [Read, Write]
+      trigger: "After @content-curator"
+      input: "data/socratic/curated-content.json, data/socratic/topic-scope.json"
+      output: "data/socratic/auto-curriculum.json"
+
+  phase1:
+    - name: learner-profiler
+      model: sonnet
+      description: "Learner assessment — knowledge state, learning style, response patterns"
+      tools: [Read, Write]
+      trigger: "First session start / periodic re-diagnosis"
+      input: "Learner responses"
+      output: "data/socratic/learner-profile.json"
+
+    - name: knowledge-researcher
+      model: sonnet
+      description: "On-demand supplementary research for misconception correction"
+      tools: [Read, WebSearch, WebFetch]
+      trigger: "When @misconception-detector detects critical severity"
+      input: "Misconception context"
+      output: "data/socratic/supplementary-knowledge.md"
+
+  phase2:
+    - name: path-optimizer
+      model: sonnet
+      description: "Personalized learning path — ZPD, spaced repetition, transfer challenges"
+      tools: [Read, Write]
+      trigger: "After profiling / after each session"
+      input: "data/socratic/learner-profile.json, data/socratic/auto-curriculum.json"
+      output: "data/socratic/learning-path.json"
+
+    - name: session-planner
+      model: sonnet
+      description: "Session structure design — Warm-up → Deep Dive → Synthesis"
+      tools: [Read, Write]
+      trigger: "Session start request"
+      input: "data/socratic/learning-path.json, data/socratic/learner-profile.json"
+      output: "data/socratic/session-plan.json"
+
+    - name: session-logger
+      model: haiku
+      description: "Background session logging — 5-second snapshots, recovery checkpoints"
+      tools: [Read, Write, Glob]
+      trigger: "Session start (runs in background)"
+      input: "Active session state"
+      output: "data/socratic/sessions/active/{session_id}.log.json"
+
+  phase3:
+    - name: orchestrator
+      model: opus
+      description: "Master coordinator — agent dispatch, state monitoring, session management"
+      tools: [Read, Write, Glob, Grep, Bash]
+      trigger: "Always active during tutoring sessions"
+      input: "All system state"
+      output: "SOT updates (learner-state.yaml)"
+      note: "Only agent with write access to learner-state.yaml"
+
+    - name: socratic-tutor
+      model: opus
+      description: "Core tutoring agent — 3-level Socratic questioning (confirm/explore/refute)"
+      tools: [Read]
+      trigger: "Session start"
+      input: "data/socratic/session-plan.json, learner responses"
+      output: "data/socratic/session-transcript.json"
+      sub_agents:
+        - misconception-detector
+        - metacog-coach
+      temperature: 0.7
+
+    - name: misconception-detector
+      model: sonnet
+      description: "Real-time misconception detection — severity: minor/moderate/critical"
+      tools: [Read]
+      trigger: "Every learner response"
+      input: "Learner response + concept context"
+      output: "data/socratic/misconception-alert.json"
+      parent_agent: socratic-tutor
+
+    - name: metacog-coach
+      model: sonnet
+      description: "Metacognition training — thinking process awareness prompts"
+      tools: [Read]
+      trigger: "At session plan checkpoints"
+      input: "Session context + learner state"
+      output: "Injected into dialogue"
+      parent_agent: socratic-tutor
+
+    - name: concept-mapper
+      model: sonnet
+      description: "Concept relationship visualization — prerequisite, contrast, similarity"
+      tools: [Read, Write]
+      trigger: "Session end / new concept mastered"
+      input: "data/socratic/learner-profile.json, data/socratic/auto-curriculum.json"
+      output: "data/socratic/concept-map.json"
+
+    - name: progress-tracker
+      model: sonnet
+      description: "Learning progress tracking, growth curve analysis, reporting"
+      tools: [Read, Write]
+      trigger: "Session end / on request"
+      input: "Session transcript + learner state"
+      output: "data/socratic/progress-report.json"
+
+
+# ═══════════════════════════════════════════════════════════
+# Slash Commands
+# ═══════════════════════════════════════════════════════════
+
+slash_commands:
+  builder:
+    - name: build-socratic-tutor
+      description: "Launch the 21-step builder workflow"
+      file: ".claude/commands/build-socratic-tutor.md"
+
+    - name: review-research
+      description: "Review Research Phase outputs (Step 4)"
+      file: ".claude/commands/review-research.md"
+
+    - name: approve-design
+      description: "Approve Planning Phase outputs (Step 11)"
+      file: ".claude/commands/approve-design.md"
+
+    - name: accept-system
+      description: "Accept final system (Step 20)"
+      file: ".claude/commands/accept-system.md"
+
+  target:
+    - name: teach
+      description: "Auto-generate curriculum from keyword (Phase 0)"
+      file: ".claude/commands/teach.md"
+      args:
+        - keyword: { type: string, required: true }
+        - depth: { type: "enum[quick,standard,deep]", default: standard }
+        - target_hours: { type: integer, required: false }
+
+    - name: teach-from-file
+      description: "Generate curriculum from uploaded materials"
+      file: ".claude/commands/teach-from-file.md"
+      args:
+        - file: { type: file, required: true }
+        - expand: { type: boolean, default: true }
+
+    - name: start-learning
+      description: "Start a Socratic tutoring session"
+      file: ".claude/commands/start-learning.md"
+      args:
+        - topic: { type: string, required: false }
+
+    - name: upload-content
+      description: "Upload and analyze new learning materials"
+      file: ".claude/commands/upload-content.md"
+      args:
+        - file: { type: file, required: true }
+
+    - name: my-progress
+      description: "View current learning progress"
+      file: ".claude/commands/my-progress.md"
+
+    - name: concept-map
+      description: "Visualize learned concept relationships"
+      file: ".claude/commands/concept-map.md"
+
+    - name: challenge
+      description: "Request a transfer learning challenge"
+      file: ".claude/commands/challenge.md"
+      args:
+        - type: { type: "enum[same-field,far-transfer]", default: same-field }
+
+    - name: end-session
+      description: "End current tutoring session"
+      file: ".claude/commands/end-session.md"
+
+    - name: resume
+      description: "Resume an interrupted session"
+      file: ".claude/commands/resume.md"
+
+
+# ═══════════════════════════════════════════════════════════
+# Pre/Post-processing Scripts
+# ═══════════════════════════════════════════════════════════
+
+preprocessing_scripts:
+  step-1:
+    path: "temp/scripts/split_prd_sections.py"
+    description: "Split PRD into logical sections for focused analysis"
+    input: "coding-resource/PRD.md"
+    output: "temp/prd-sections/*.md"
+
+  step-3:
+    path: "temp/scripts/extract_edu_theories.py"
+    description: "Extract educational theory references from PRD"
+    input: "coding-resource/PRD.md"
+    output: "temp/edu-theories.json"
+
+  step-5:
+    path: "temp/scripts/merge_architecture_inputs.py"
+    description: "Merge Step 1-3 outputs into single architecture input"
+    input: "research/requirements-manifest.md, research/tech-feasibility-report.md, research/pedagogy-verification-report.md"
+    output: "temp/architecture-input.md"
+
+  step-7:
+    path: "temp/scripts/extract_field_inventory.py"
+    description: "Extract JSON field inventory from design documents"
+    input: "coding-resource/socratic-ai-tutor-workflow.md, research/requirements-manifest.md"
+    output: "temp/field-inventory.json"
+
+  step-14:
+    path: "temp/scripts/extract_phase0_spec.py"
+    description: "Extract Phase 0 pipeline specification from architecture"
+    input: "planning/architecture-blueprint.md"
+    output: "temp/phase0-spec.md"
+
+  step-15:
+    path: "temp/scripts/extract_phase13_spec.py"
+    description: "Extract Phase 1-3 Skill specification from architecture"
+    input: "planning/architecture-blueprint.md"
+    output: "temp/phase13-spec.md"
+
+  step-18:
+    path: "temp/scripts/generate_test_fixtures.py"
+    description: "Generate test fixture data for integration testing"
+    input: "planning/json-schemas.md"
+    output: "temp/test-fixtures/"
+
+postprocessing_scripts:
+  step-1:
+    path: "temp/scripts/validate_counts.py"
+    description: "Validate agent/command/MCP counts against requirements"
+    input: "research/requirements-manifest.md"
+    validation: "agents ≥ 17, commands ≥ 9, MCPs ≥ 7"
+
+  step-3:
+    path: "temp/scripts/cross_ref_pedagogy.py"
+    description: "Cross-reference educational theories for consistency"
+    input: "research/pedagogy-verification-report.md"
+    validation: "No contradictory recommendations"
+
+  step-7:
+    path: "temp/scripts/validate_schema_chain.py"
+    description: "Validate upstream→downstream field reference integrity"
+    input: "planning/json-schemas.md"
+    validation: "All downstream references resolvable"
+
+
+# ═══════════════════════════════════════════════════════════
+# MCP Servers (Target System)
+# ═══════════════════════════════════════════════════════════
+
+mcp_servers:
+  curriculum_genesis:
+    - name: web-search-mcp
+      description: "Real-time web search engine"
+      used_by: ["@web-searcher"]
+      claude_code_equivalent: "WebSearch tool"
+
+    - name: deep-research-mcp
+      description: "Deep research engine (Claude Deep Research integration)"
+      used_by: ["@deep-researcher"]
+      claude_code_equivalent: "WebSearch + WebFetch + multi-hop reasoning"
+
+    - name: scholar-search-mcp
+      description: "Academic literature search (Google Scholar, arXiv, IEEE)"
+      used_by: ["@deep-researcher", "@knowledge-researcher"]
+      claude_code_equivalent: "WebSearch with academic domain filtering"
+
+    - name: mooc-connector-mcp
+      description: "MOOC platform content access (Coursera, edX)"
+      used_by: ["@deep-researcher"]
+      claude_code_equivalent: "WebFetch for public MOOC pages"
+
+  tutoring_analytics:
+    - name: adaptive-test-mcp
+      description: "Adaptive diagnostic test engine"
+      used_by: ["@learner-profiler"]
+      claude_code_equivalent: "Built-in adaptive questioning logic"
+
+    - name: graph-renderer-mcp
+      description: "Concept map visualization"
+      used_by: ["@concept-mapper"]
+      claude_code_equivalent: "Mermaid diagram generation"
+
+    - name: analytics-mcp
+      description: "Learning analytics and report generation"
+      used_by: ["@progress-tracker"]
+      claude_code_equivalent: "JSON data analysis + report generation"
+
+
+# ═══════════════════════════════════════════════════════════
+# Directory Structure (Target System)
+# ═══════════════════════════════════════════════════════════
+
+directory_structure:
+  data/socratic/:
+    - user-resource-scan.json
+    - topic-scope.json
+    - web-search-results.json
+    - deep-research-results.json
+    - curated-content.json
+    - auto-curriculum.json
+    - learner-profile.json
+    - learning-path.json
+    - session-plan.json
+    - session-transcript.json
+    - concept-map.json
+    - progress-report.json
+    - misconception-alert.json
+    - supplementary-knowledge.md
+    - learner-state.yaml
+    - schemas/:
+        - user-resource-scan.schema.json
+        - topic-scope.schema.json
+        - web-search-results.schema.json
+        - deep-research-results.schema.json
+        - curated-content.schema.json
+        - auto-curriculum.schema.json
+        - learner-profile.schema.json
+        - learning-path.schema.json
+        - session-plan.schema.json
+        - session-log.schema.json
+        - learner-state.schema.json
+    - sessions/:
+        - active/
+        - completed/
+        - interrupted/

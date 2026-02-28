@@ -20,3 +20,14 @@ translations/*
 
 # Setup Hook logs — runtime diagnostics (regenerated on each run)
 .claude/hooks/*.log
+
+# Nested .claude artifact inside hooks/scripts (runtime-generated)
+.claude/hooks/scripts/.claude/
+
+# Builder workflow runtime directories (generated during /build-socratic-tutor execution)
+temp/
+data/
+research/
+planning/
+testing/
+docs/

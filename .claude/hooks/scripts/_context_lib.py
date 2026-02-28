@@ -551,7 +551,7 @@ def read_autopilot_state(project_dir):
                 "auto_approved_steps": ap.get("auto_approved_steps", []),
                 "current_step": wf.get("current_step", 0),
                 "workflow_name": wf.get("name", ""),
-                "workflow_status": wf.get("status", ""),
+                "workflow_status": wf.get("workflow_status", ""),
                 "outputs": wf.get("outputs", {}),
             }
     except Exception:
@@ -580,7 +580,7 @@ def read_autopilot_state(project_dir):
         ("activated_at", r'activated_at\s*:\s*["\']?(.+?)["\']?\s*$'),
         ("current_step", r'current_step\s*:\s*(\d+)'),
         ("workflow_name", r'name\s*:\s*["\']?(.+?)["\']?\s*$'),
-        ("workflow_status", r'status\s*:\s*["\']?(.+?)["\']?\s*$'),
+        ("workflow_status", r'workflow_status\s*:\s*["\']?(.+?)["\']?\s*$'),
     ]:
         m = re.search(pattern, content, re.MULTILINE)
         if m:
@@ -675,7 +675,7 @@ def validate_sot_schema(ap_state):
     # S5: workflow_status — must be recognized value
     status = ap_state.get("workflow_status", "")
     if status:
-        valid_statuses = {"running", "completed", "error", "paused"}
+        valid_statuses = {"pending", "in_progress", "running", "completed", "error", "paused"}
         if status not in valid_statuses:
             warnings.append(
                 f"SOT schema: unrecognized workflow_status '{status}'"
@@ -3858,7 +3858,12 @@ def _read_sot_outputs(project_dir):
                 except ImportError:
                     continue
             if isinstance(data, dict):
-                outputs = data.get("outputs", {})
+                # Support both flat SOT (outputs: ...) and nested (workflow: outputs: ...)
+                outputs = data.get("outputs")
+                if not isinstance(outputs, dict):
+                    wf = data.get("workflow", {})
+                    if isinstance(wf, dict):
+                        outputs = wf.get("outputs")
                 return outputs if isinstance(outputs, dict) else {}
         except Exception:
             continue
