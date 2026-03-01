@@ -7,7 +7,7 @@
 This Skill implements the complete Phase 1-3 Socratic Tutoring Engine — the interactive system that conducts real-time Socratic dialogue with learners. It manages the full session lifecycle: learner profiling, adaptive path optimization, session planning, Socratic tutoring with misconception detection and metacognitive coaching, session logging with recovery, and progress tracking.
 
 **Entry Point**: `/start-learning [topic]` command
-**End Point**: `/end-session` command, session success (all objectives met), or timeout (45 min)
+**End Point**: `/end-session` command, natural language exit intent (e.g., "그만", "끝내자"), session success (all objectives met), or timeout (45 min)
 **Recovery**: `/resume` command for interrupted sessions
 **Orchestrator**: `@orchestrator` manages all dispatch, state tracking, and session lifecycle
 
@@ -74,7 +74,7 @@ stateDiagram-v2
         @session-logger: event-driven snapshots
     end note
 
-    TUTORING --> SYNTHESIS: All objectives met
+    TUTORING --> SYNTHESIS: Objectives met OR /end-session OR NL exit intent
     TUTORING --> INTERRUPTED: Abnormal termination
     TUTORING --> TUTORING: Continue dialogue
 
@@ -139,13 +139,24 @@ Format: SES_{YYYYMMDD}_{random6}
 Example: SES_20260227_a3f7b2
 ```
 
-### 2.3 Learner Detection
+### 2.3 Deferred Research Resolution
+
+Before learner detection, scan `learner-state.yaml.knowledge_state` for any concepts with `needs_external_research: true` (set by the §5.5 Timeout & Fallback Protocol in a previous session):
+
+1. For each concept with `needs_external_research: true`:
+   - Dispatch @knowledge-researcher via Task tool with the `pending_misconception_type` context
+   - This runs **non-blocking** — the session proceeds regardless of research outcome
+   - On success: inject supplementary knowledge into session context, clear the flag
+   - On failure: leave flag; will retry in next session
+2. If no pending research: skip this step (most sessions)
+
+### 2.4 Learner Detection
 
 Read `data/socratic/learner-state.yaml`:
 - If file does not exist OR `total_sessions == 0` --> **NEW LEARNER** --> go to PROFILING
 - If file exists AND `total_sessions > 0` --> **RETURNING LEARNER** --> go to PATH_REFRESH
 
-### 2.4 SOT Initialization
+### 2.5 SOT Initialization
 
 Update `data/socratic/learner-state.yaml` (via @orchestrator):
 ```yaml
@@ -588,6 +599,60 @@ The core tutoring loop runs in the **main orchestrator context** (not as a sub-a
 LOOP (until exit condition met):
   1. RECEIVE learner response
 
+  1.5. IN-SESSION NL INTENT DETECTION:
+     Before processing the response as a dialogue turn, check if the learner
+     is expressing a session management intent rather than answering a question.
+
+     Classification (check in order):
+       - END_SESSION patterns:
+         KR: "그만", "여기까지", "끝내자", "다음에 하자", "오늘은 여기까지", "그만하자"
+         EN: "stop", "exit", "quit", "done for today", "let's stop"
+         → HIGH confidence: EXIT LOOP → transition to SYNTHESIS (same as /end-session)
+
+       - SHOW_PROGRESS patterns:
+         KR: "진도율", "얼마나 배웠어?"
+         EN: "my progress", "how am I doing"
+         → Display lightweight progress summary from already-loaded SOT data
+           (knowledge_state mastery levels + current_session progress —
+            NOT full @progress-tracker dispatch, to avoid breaking dialogue flow)
+         → RETURN TO STEP 1 (re-present pending Socratic question, await next response)
+
+       - SHOW_CONCEPTS patterns:
+         KR: "개념 맵", "배운 것 보여줘"
+         EN: "concept map", "what have I learned"
+         → Dispatch @concept-mapper via Task tool (non-blocking)
+         → RETURN TO STEP 1 (re-present pending Socratic question, await next response)
+
+       - CHALLENGE patterns:
+         KR: "테스트", "실력 확인", "챌린지"
+         EN: "test me", "quiz me", "challenge"
+         → Execute /challenge (transfers control to §5.4 Transfer Challenge Protocol)
+
+     Disambiguation Rule:
+       Intent keywords must be the PRIMARY PURPOSE of the utterance.
+       If the keyword is EMBEDDED in a subject-matter discussion, classify as NO INTENT.
+
+       Examples:
+         "그만"                          → END_SESSION (HIGH) — standalone utterance
+         "오늘은 여기까지만 하자"           → END_SESSION (HIGH) — session-scoped boundary
+         "이 부분은 여기까지 이해했어"       → NO INTENT — "여기까지" modifies comprehension
+         "좀 쉬자"                        → END_SESSION (MEDIUM) → ask confirmation
+         "잠깐"                           → END_SESSION (MEDIUM) → ask confirmation
+         "이 개념을 테스트해 보면..."       → NO INTENT — "테스트" embedded in topic discussion
+
+     END_SESSION MEDIUM patterns (explicit list):
+       KR: "좀 쉬자", "잠깐"
+       EN: "take a break", "pause"
+       → Ask confirmation before executing (see confirmation flow below)
+
+     MEDIUM confidence confirmation flow:
+       Display: "세션을 종료하시겠어요?"
+         1. "네, 오늘은 여기까지" → EXIT LOOP → transition to SYNTHESIS
+         2. "아니요, 계속할게요"  → Re-present the pending Socratic question
+            and RETURN TO STEP 1 (await next response; do NOT re-run Steps 2-7)
+
+     IF NO INTENT detected → proceed to Step 2 (normal dialogue processing)
+
   2. MISCONCEPTION DETECTION (inlined @misconception-detector behavior):
      - Extract claims from response
      - Compare against correct model (from auto-curriculum.json)
@@ -649,7 +714,8 @@ LOOP (until exit condition met):
 
   7. EXIT CONDITION CHECK:
      - Success: All session objectives met (all target concept masteries reached)
-     - User exit: Learner types /end-session
+     - User exit (explicit): Learner types /end-session
+     - User exit (NL intent): Step 1.5 detected END_SESSION (HIGH or MEDIUM-confirmed)
      - Timeout soft (40 min): "We're approaching the end. Let's wrap up with a synthesis."
      - Timeout hard (45 min): Force transition to SYNTHESIS
 ```
@@ -716,6 +782,54 @@ When @socratic-tutor (inlined behavior) flags a **critical misconception**:
 3. @knowledge-researcher returns supplementary knowledge
 4. @orchestrator injects it into the Socratic dialogue context
 5. @socratic-tutor uses it to craft more targeted L3 refutation questions
+
+#### Timeout & Fallback Protocol
+
+If @knowledge-researcher does not return within the timeout window, the tutoring session must NOT stall. The following graceful degradation protocol ensures educational continuity:
+
+| Phase | Timeout | Action |
+|-------|---------|--------|
+| **Normal** | 0-60s | Wait for @knowledge-researcher result |
+| **Soft timeout** | 60s | Log warning; prepare fallback content from auto-curriculum.json |
+| **Hard timeout** | 90s | Abandon external research; activate fallback |
+
+**Fallback activation (on timeout or Task tool error):**
+
+1. **Log the failure** in session log:
+   ```json
+   { "event": "knowledge_researcher_fallback", "reason": "timeout|error", "concept_id": "concept_NNN", "misconception_type": "MC-XXX", "elapsed_seconds": 90, "timestamp": "..." }
+   ```
+
+2. **Mark concept for deferred research** in learner-state.yaml:
+   ```yaml
+   knowledge_state:
+     concept_NNN:
+       needs_external_research: true
+       pending_misconception_type: "MC-XXX"
+       fallback_activated_at: "2026-02-27T10:45:00Z"
+   ```
+
+3. **Construct fallback refutation** using available sources (priority order):
+   a. **auto-curriculum.json** — the concept's `key_points`, `common_misconceptions`, and `socratic_questions` (L3 level)
+   b. **Previous session data** — any related misconception corrections from `misconceptions/` directory
+   c. **General LLM knowledge** — @socratic-tutor's trained understanding (lowest priority)
+
+4. **Continue Socratic dialogue** with the fallback content:
+   - @socratic-tutor generates L3 refutation questions using fallback sources
+   - Quality may be slightly lower than external-research-enhanced refutation, but educational flow is preserved
+   - Anti-sycophancy rules STILL APPLY — no softening of the refutation
+
+5. **Deferred research resolution** (next session or /resume):
+   - When @orchestrator enters INIT state, scan learner-state for `needs_external_research: true` concepts
+   - Dispatch @knowledge-researcher for each pending concept (non-blocking, before TUTORING state)
+   - Clear `needs_external_research` flag after successful research
+   - Inject the deferred research results into the next session's context
+
+**NEVER DO** (Fallback-specific):
+- NEVER stall the tutoring dialogue waiting for @knowledge-researcher beyond 90 seconds
+- NEVER skip the misconception correction entirely — fallback content MUST be used
+- NEVER lower the L3 question level to L1 because external research failed
+- NEVER mark the misconception as "resolved" when using fallback — it remains "pending_external_verification"
 
 ### 5.6 Misconception Taxonomy
 
@@ -1109,8 +1223,51 @@ Output validates against data/socratic/schemas/learning-path.json [trace:step-7:
 
 After all synthesis agents complete:
 
-1. **Move session files**: `sessions/active/{session_id}.log.json` --> `sessions/completed/`
-2. **Update learner-state.yaml** (via @orchestrator):
+1. **Save session transcript** (S19 format) [trace:step-7:S19]:
+   Write `data/socratic/transcripts/{session_id}_transcript.json` with the full structured dialogue record.
+   - Extract all tutor/learner turns from the session dialogue
+   - Tag each turn with `concept_id`, `question_level`, `session_phase`, `misconception_flag`
+   - Compute `summary.learner_articulated_connections` by scanning learner turns for explicit concept-linking language
+   - Compute `summary.question_level_distribution` from tutor question levels
+   - This file is consumed by @concept-mapper (Source B edges) and @progress-tracker (dialogue quality)
+
+2. **Move session files**: `sessions/active/{session_id}.log.json` --> `sessions/completed/`
+
+3. **Consolidate misconception data** (via @orchestrator — AR-1 single writer):
+
+   Read `data/socratic/misconceptions/{session_id}_misconceptions.json` (S14 format). For each misconception alert in the session file:
+
+   a. **Merge into `knowledge_state.{concept_id}.misconceptions_history[]`**:
+      ```yaml
+      knowledge_state:
+        concept_NNN:
+          misconceptions_history:
+            # Append each S14 alert as a compact record:
+            - type: "MC-OVG"               # from S14 alert.type
+              severity: "moderate"          # from S14 alert.severity
+              corrected: true              # from S14 alert.corrected
+              session: "SES_XXXXXXXX"      # from S14 alert.session_id
+              correction_attempts: 2       # from S14 alert.correction_attempts
+      ```
+
+   b. **Update `response_pattern.common_error_types[]`**:
+      - Count misconception types across ALL `misconceptions_history` entries (all concepts, all sessions)
+      - Keep top-3 most frequent types in `common_error_types`
+      - This informs `@session-planner`'s misconception watch list in future sessions
+
+   c. **Handle fallback misconceptions** (from §5.5 Timeout & Fallback Protocol):
+      - If any misconception has `corrected: false` AND the concept has `needs_external_research: true`:
+        leave both flags intact — deferred research will resolve in next INIT state
+      - If `corrected: false` but NO `needs_external_research` flag:
+        the misconception was not corrected within the session but is not pending research
+        — `@path-optimizer` will prioritize this concept in the next session (via progress-report interventions)
+
+   d. **Deduplication rule**: If the same `{concept_id, type}` pair already exists in `misconceptions_history` from a previous session:
+      - Do NOT remove the old entry (history is append-only for audit trail)
+      - The new entry shows whether re-occurrence was corrected this time
+      - `@progress-tracker` uses the full history to detect "persistent misconception" intervention triggers
+
+4. **Update learner-state.yaml** (via @orchestrator):
    ```yaml
    current_session: null
    history:
@@ -1118,12 +1275,13 @@ After all synthesis agents complete:
      total_study_time_minutes: <accumulated>
      sessions:
        - { id: "SES_XXXXXXXX", date: "YYYY-MM-DD", duration: <minutes>,
-           concepts: ["concept_id"], mastery_gained: <float> }
+           concepts: ["concept_id"], mastery_gained: <float>,
+           misconceptions_detected: N, misconceptions_corrected: N }
      overall_mastery_trend: "improving|stable|declining"
      transfer_challenges_completed: N
      transfer_challenges_passed: N
    ```
-3. **Display session summary**:
+5. **Display session summary**:
    ```
    ============================================
    Session Complete: SES_XXXXXXXX
@@ -1236,7 +1394,8 @@ Concepts with mastery >= 0.5 are flagged for review. @path-optimizer prioritizes
 | Condition | Trigger | Action |
 |-----------|---------|--------|
 | **Success** | All session objectives met (all concept target masteries reached) | Transition to SYNTHESIS --> session summary --> close |
-| **User exit** | Learner invokes `/end-session` at any time | Save progress --> abbreviated synthesis --> session summary --> close |
+| **User exit (explicit)** | Learner invokes `/end-session` command | Save progress --> abbreviated synthesis --> session summary --> close |
+| **User exit (NL intent)** | Step 1.5 detects END_SESSION with HIGH confidence, or MEDIUM confirmed | Same flow as explicit: save progress --> abbreviated synthesis --> session summary --> close |
 | **Soft timeout** | 40 minutes elapsed | Display: "We're approaching the end. Let's wrap up." --> synthesis begins |
 | **Hard timeout** | 45 minutes elapsed | Force transition to SYNTHESIS --> session summary --> close |
 | **Interruption** | Unexpected termination (context overflow, API error) | @session-logger saves final snapshot --> move to `interrupted/` --> recoverable via `/resume` |

@@ -16,6 +16,27 @@ You are the @orchestrator executing the `/my-progress` command -- generating a c
 
 None.
 
+## Natural Language Triggers
+
+In addition to the `/my-progress` slash command, the system detects progress inquiry intent in two contexts:
+
+**Pre-Session** (via orchestrator.md §9.1 — no active session):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "진도율", "어디까지 했어?", "얼마나 배웠어?" | "my progress", "how far along" |
+
+- Executes full `/my-progress` flow (dispatches @progress-tracker)
+
+**In-Session** (via SKILL.md §5.2 Step 1.5 — during TUTORING):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "진도율", "얼마나 배웠어?" | "my progress", "how am I doing" |
+
+- Displays lightweight progress summary from already-loaded SOT data (NOT full @progress-tracker dispatch)
+- Returns to Socratic dialogue after displaying summary
+
 ## Preconditions
 
 `data/socratic/learner-state.yaml` must exist with at least one session in history (`history.total_sessions >= 1`) or an active session.

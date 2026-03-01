@@ -18,6 +18,18 @@ You are the @orchestrator executing the `/start-learning` command -- activating 
 |----------|------|----------|---------|------------|-------------|
 | `topic` | string | No | -- | If provided, must match an existing curriculum keyword | Optional topic filter (if multiple curricula exist) |
 
+## Natural Language Triggers
+
+In addition to the `/start-learning` slash command, the system detects natural language session start intent when no active session exists (via orchestrator.md §9.1 Pre-Session NL Intent Detection):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "학습 시작", "배우자", "공부하자", "시작하자", "배워보자" | "start learning", "let's learn", "begin studying", "teach me" |
+
+- **HIGH**: Executes `/start-learning` immediately (same full session initialization flow)
+- Does NOT trigger during active sessions (pre-session detection only)
+- Does NOT trigger during Phase 0 pipeline execution (`state.yaml workflow_status == "in_progress"`)
+
 ## Preconditions
 
 1. `data/socratic/curriculum/auto-curriculum.json` must exist (Phase 0 complete)

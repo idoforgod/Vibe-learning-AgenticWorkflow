@@ -18,6 +18,27 @@ You are the @orchestrator executing the `/concept-map` command -- visualizing th
 |----------|------|----------|---------|------------|-------------|
 | `topic` | string | No | -- | If provided, filters the map to concepts related to this topic/module | Focuses the concept map on a specific sub-topic or module |
 
+## Natural Language Triggers
+
+In addition to the `/concept-map` slash command, the system detects concept map intent in two contexts:
+
+**Pre-Session** (via orchestrator.md §9.1 — no active session):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "개념 맵", "배운 것 보여줘", "지식 맵" | "concept map", "what have I learned" |
+
+- Executes full `/concept-map` flow (dispatches @concept-mapper)
+
+**In-Session** (via SKILL.md §5.2 Step 1.5 — during TUTORING):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "개념 맵", "배운 것 보여줘" | "concept map", "what have I learned" |
+
+- Dispatches @concept-mapper via Task tool (non-blocking)
+- Returns to Socratic dialogue after displaying result
+
 ## Preconditions
 
 1. `data/socratic/learner-state.yaml` must exist

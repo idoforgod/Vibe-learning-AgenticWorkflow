@@ -109,7 +109,7 @@ Transitions:
   PATH_REFRESH --> SESSION_PLANNING  : learning-path.json updated
   PATH_OPTIMIZATION --> SESSION_PLANNING : learning-path.json produced
   SESSION_PLANNING --> TUTORING      : session-plan.json produced
-  TUTORING --> SYNTHESIS             : Objectives met OR /end-session
+  TUTORING --> SYNTHESIS             : Objectives met OR /end-session OR NL exit intent
   TUTORING --> INTERRUPTED           : Abnormal termination
   INTERRUPTED --> INIT               : /resume command
   SYNTHESIS --> [*]                  : Session complete
@@ -117,13 +117,13 @@ Transitions:
 
 ### State Actions
 
-- **INIT**: Verify curriculum exists, check for existing learner-state, generate session ID, dispatch @session-logger, branch to PROFILING or PATH_REFRESH.
+- **INIT**: Verify curriculum exists, check for existing learner-state, generate session ID, dispatch @session-logger, resolve deferred research (scan learner-state for `needs_external_research: true` → dispatch @knowledge-researcher non-blocking), branch to PROFILING or PATH_REFRESH.
 - **PROFILING**: Dispatch @content-analyzer P1 + @learner-profiler. Wait for outputs. Transition to PATH_OPTIMIZATION.
 - **PATH_REFRESH**: Dispatch @path-optimizer with progress data. Transition to SESSION_PLANNING.
 - **PATH_OPTIMIZATION**: Dispatch @path-optimizer. Validate path references. Transition to SESSION_PLANNING.
 - **SESSION_PLANNING**: Dispatch @session-planner. Validate 3-phase plan. Transition to TUTORING.
 - **TUTORING**: Activate @socratic-tutor behavior. For every response: misconception check, generate question, signal @session-logger.
-- **SYNTHESIS**: Save transcript, dispatch @concept-mapper + @progress-tracker, display summary.
+- **SYNTHESIS**: Save transcript (S19 format to `data/socratic/transcripts/`), dispatch @concept-mapper + @progress-tracker, consolidate misconception data (S14 → learner-state.yaml.knowledge_state per AR-1), update response_pattern.common_error_types, dispatch @path-optimizer feedback loop, display summary.
 - **INTERRUPTED**: Emergency save, preserve state for /resume.
 
 ## 5. Agent Dispatch Protocols
@@ -150,6 +150,7 @@ Transitions:
 | Level | Scope | Recovery | Max Retries |
 |-------|-------|----------|-------------|
 | L1 Agent Error | Single agent | Retry agent | 3 |
+| L1.5 Knowledge Research Timeout | @knowledge-researcher | Graceful degradation to curriculum fallback (see SKILL.md §5.5 Timeout & Fallback Protocol) | 0 (degrade) |
 | L2 Step Error | Pipeline step | Fallback to pre-trained | 0 (degrade) |
 | L3 Phase Error | Entire phase | Abort with error | 0 |
 | L4 Session Error | Interactive session | Auto-save + /resume | 0 (save) |
@@ -182,6 +183,30 @@ Transitions:
 | `/challenge` | Trigger transfer challenge |
 | `/end-session` | Transition to SYNTHESIS |
 | `/resume` | Recovery protocol |
+
+### 9.1 Pre-Session Natural Language Intent Detection
+
+When the user's input does NOT start with `/` AND no active session exists (learner-state.yaml `current_session.status` != "active") AND Phase 0 pipeline is not currently running (state.yaml `workflow_status` != "in_progress"), classify the user's intent before falling through to general conversation.
+
+**Classification Table**:
+
+| Intent | Korean Patterns | English Patterns | Action |
+|--------|----------------|------------------|--------|
+| START_LEARNING | 학습 시작, 배우자, 공부하자, 시작하자, 배워보자 | start learning, let's learn, begin studying, teach me | Execute `/start-learning` |
+| RESUME | 이어서 하자, 계속하자, 이전에 뭐 했더라?, 지난번에 어디까지 | continue, resume, pick up where we left off | Execute `/resume` |
+| SHOW_PROGRESS | 진도율, 어디까지 했어?, 얼마나 배웠어? | my progress, how far along | Execute `/my-progress` |
+| SHOW_CONCEPTS | 개념 맵, 배운 것 보여줘, 지식 맵 | concept map, what have I learned | Execute `/concept-map` |
+| NO_MATCH | — | — | No action (normal conversation) |
+
+**Disambiguation Rules**:
+- "다시 해볼까?" → Ambiguous (RESUME vs START_LEARNING) → Ask confirmation: "이전 세션을 이어서 하시겠어요, 아니면 새로 시작하시겠어요?"
+- Interrupted session exists + RESUME pattern → RESUME priority
+- No interrupted session + RESUME pattern → Fallback to SHOW_PROGRESS (display last session info)
+- If active session exists → Skip pre-session detection entirely (in-session detection handled by SKILL.md §5.2 Step 1.5)
+
+**Confidence Levels**:
+- HIGH (single clear pattern): Execute immediately
+- MEDIUM (ambiguous or compound): Ask one confirmation question, then execute
 
 ## 10. Mastery Computation Protocol
 

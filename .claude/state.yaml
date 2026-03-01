@@ -1,7 +1,7 @@
 workflow:
   name: "Socratic AI Tutor Builder"
-  current_step: 16
-  workflow_status: "in_progress"
+  current_step: 21
+  workflow_status: "completed"
   outputs:
     step-1: "research/requirements-manifest.md"
     step-2: "research/tech-feasibility-report.md"
@@ -21,10 +21,17 @@ workflow:
     step-13: ".claude/agents/"
     step-14: ".claude/skills/socratic-tutor/phase0-pipeline.md"
     step-15: ".claude/skills/socratic-tutor/"
+    step-16: ".claude/commands/"
+    step-17: ".claude/skills/socratic-tutor/hooks-and-state.md"
+    step-18: "testing/integration-test-results.md"
+    step-19: "review-logs/step-19-review.md"
+    step-20: "autopilot-logs/step-20-decision.md"
+    step-21: "docs/developer-guide.md"
+    step-21-ko: "docs/developer-guide.ko.md"
   autopilot:
     enabled: true
     decision_log_dir: "autopilot-logs/"
-    auto_approved_steps: [4, 11]
+    auto_approved_steps: [4, 11, 20]
   pacs:
     current_step_score: 86
     dimensions:
@@ -32,7 +39,7 @@ workflow:
       C: 86
       L: 88
     weak_dimension: "C"
-    pre_mortem_flag: "interactive-relay-protocol-implicit, session-logger-background-mechanism-untested, no-reference-materials-session-templates"
+    pre_mortem_flag: "agent-model-accuracy-in-inventory-table, path-consistency-across-documents, unsourced-quantitative-claims"
     history:
       step-1: {score: 78, weak: "L"}
       step-2: {score: 82, weak: "L"}
@@ -47,6 +54,11 @@ workflow:
       step-13: {score: 86, weak: "C"}
       step-14: {score: 85, weak: "C"}
       step-15: {score: 86, weak: "C"}
+      step-16: {score: 85, weak: "C"}
+      step-17: {score: 84, weak: "C"}
+      step-18: {score: 85, weak: "C"}
+      step-19: {score: 85, weak: "C"}
+      step-21: {score: 86, weak: "C"}
   active_team: null
   completed_teams:
     - name: "step-6-agent-design"

@@ -16,6 +16,19 @@ You are the @orchestrator executing the `/end-session` command -- gracefully end
 
 None.
 
+## Natural Language Triggers
+
+In addition to the `/end-session` slash command, the system detects natural language session termination intent during TUTORING state (via SKILL.md §5.2 Step 1.5):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "그만", "여기까지", "끝내자", "다음에 하자", "오늘은 여기까지", "그만하자" | "stop", "exit", "quit", "done for today", "let's stop" |
+| MEDIUM | "좀 쉬자", "잠깐" | "take a break", "pause" |
+
+- **HIGH**: Executes `/end-session` immediately (same SYNTHESIS flow)
+- **MEDIUM**: Confirmation prompt: "세션을 종료하시겠어요?" → Yes triggers `/end-session`
+- Keywords embedded in subject-matter discussion are NOT classified as intent (e.g., "이 부분은 여기까지 이해했어" → no intent)
+
 ## Preconditions
 
 An active session must exist:

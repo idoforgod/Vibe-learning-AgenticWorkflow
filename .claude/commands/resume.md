@@ -18,6 +18,19 @@ You are the @orchestrator executing the `/resume` command -- recovering an inter
 |----------|------|----------|---------|------------|-------------|
 | `session-id` | string | No | -- | Must match pattern `SES_{YYYYMMDD}_{6chars}` if provided | Specific session to resume; if omitted, shows list or auto-selects the only one |
 
+## Natural Language Triggers
+
+In addition to the `/resume` slash command, the system detects natural language session recovery intent when no active session exists (via orchestrator.md §9.1 Pre-Session NL Intent Detection):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "이어서 하자", "계속하자", "지난번에 어디까지", "이전에 뭐 했더라?" | "continue", "resume", "pick up where we left off" |
+| MEDIUM | "다시 해볼까?" | "shall we try again?" |
+
+- **HIGH** + interrupted session exists: Executes `/resume` immediately
+- **HIGH** + no interrupted session: Falls back to `/my-progress` (shows last session info)
+- **MEDIUM**: Confirmation prompt to disambiguate RESUME vs START_LEARNING
+
 ## Preconditions
 
 1. At least one interrupted session must exist in `data/socratic/sessions/interrupted/`

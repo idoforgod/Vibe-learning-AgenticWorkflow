@@ -18,6 +18,18 @@ You are the @orchestrator executing the `/challenge` command -- triggering a tra
 |----------|------|----------|---------|------------|-------------|
 | `concept` | string | No | -- | If provided, must match a concept ID or label in the curriculum; concept mastery must be >= 0.7 | Specific concept to challenge; if omitted, system selects the best candidate |
 
+## Natural Language Triggers
+
+In addition to the `/challenge` slash command, the system detects challenge intent during active TUTORING sessions (via SKILL.md §5.2 Step 1.5 In-Session NL Intent Detection):
+
+| Confidence | Korean Patterns | English Patterns |
+|------------|----------------|------------------|
+| HIGH | "테스트", "실력 확인", "챌린지" | "test me", "quiz me", "challenge" |
+
+- Executes `/challenge` flow (transfers control to SKILL.md §5.4 Transfer Challenge Protocol)
+- Only triggers during TUTORING state (in-session detection only — no pre-session trigger)
+- Disambiguation: keywords embedded in subject-matter discussion (e.g., "이 개념을 테스트해 보면...") are NOT classified as intent
+
 ## Preconditions
 
 1. Active session in TUTORING state (`learner-state.current_session.status == "active"`)

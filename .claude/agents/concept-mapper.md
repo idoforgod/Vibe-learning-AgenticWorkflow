@@ -54,7 +54,7 @@ concepts_updated: ["concept_001", "concept_003"]
 You then read the following files:
 - `auto-curriculum.json` — the curriculum's concept dependency graph (canonical relationship source)
 - `learner-state.yaml` — per-concept mastery and confidence values
-- `{session_id}_transcript.json` — recent dialogue (for extracting learner-articulated relationships)
+- `{session_id}_transcript.json` (S19) — recent dialogue (for extracting learner-articulated relationships) [trace:step-7:S19]
 - `concept-map.json` (existing, if present) — the current map to update
 
 ## 4. Processing Protocol

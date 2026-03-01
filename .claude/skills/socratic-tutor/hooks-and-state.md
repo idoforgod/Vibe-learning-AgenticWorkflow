@@ -83,8 +83,10 @@ orchestrator privileges.
 
 Hook type: PreToolUse (matcher: Edit|Write)
 Exit codes:
-  0 — allow (target is not a SOT file, or orchestrator context detected)
-  2 — block (SOT file targeted by non-orchestrator context)
+  0 — allow (always; includes stderr WARNING when SOT file is targeted)
+  Note: This hook does NOT use exit 2 (hard block) because the hook layer
+  cannot distinguish orchestrator from sub-agent context. Protection relies on
+  agent prompt instructions (AR-5) + this WARNING as a behavioral safety net.
 
 Environment:
   CLAUDE_TOOL_INPUT — JSON with file_path (Edit) or file_path (Write)
@@ -896,13 +898,13 @@ These API calls are made via Bash tool by the relevant agents. No MCP server nee
   - Exit code 0 (warning mode) — stderr feedback for LLM self-correction
 - [x] `track_session_activity.py` — PostToolUse hook for session activity tracking
   - Reads `learner-state.yaml` for active session detection
-  - Writes to `sessions/active/.activity-tracker.json`
+  - Writes to `data/socratic/sessions/active/.activity-tracker.json`
   - Prunes to last 100 entries — bounded growth
   - Atomic write (tmp + rename)
   - Exit code 0 always (logging-only)
 - [x] `save_session_snapshot.py` — Stop hook for session snapshot
   - Reads `learner-state.yaml` for active session
-  - Writes snapshot to `sessions/snapshots/{session_id}_{epoch}.json`
+  - Writes snapshot to `data/socratic/sessions/snapshots/{session_id}_{epoch}.json`
   - Prunes to last 20 snapshots per session
   - Atomic write (tmp + rename)
   - Exit code 0 always (snapshot-only)
